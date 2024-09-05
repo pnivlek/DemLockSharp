@@ -1,0 +1,24 @@
+name: PR Build
+on:
+  pull_request:
+    branches: "**"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        dotnet: ['8.0.x']
+    name: "Test on .NET ${{ matrix.dotnet }}"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: "Setup .NET ${{ matrix.dotnet }}"
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ matrix.dotnet }}
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: "Build on ${{ matrix.dotnet }}"
+      run: dotnet build --no-restore ./DemLock.Tests/DemLock.Tests.csproj
+    - name: "Test on ${{ matrix.dotnet }}"
+      run: dotnet test --no-build --verbosity normal
