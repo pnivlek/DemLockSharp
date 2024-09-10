@@ -46,7 +46,11 @@ public class MessageHandler
             case MessageTypes.svc_ServerInfo:
                 ProcessServerInfo(data);
                 break;
+            case MessageTypes.svc_FlattenedSerializer:
+                break;
             case MessageTypes.svc_ClassInfo:
+                break;
+            case MessageTypes.svc_SetPause:
                 break;
             case MessageTypes.svc_CreateStringTable:
                 ProcessCreateStringTable(data);
@@ -56,12 +60,52 @@ public class MessageHandler
                 break;
             case MessageTypes.svc_VoiceInit:
                 break;
+            case MessageTypes.svc_VoiceData:
+                break;
+            case MessageTypes.svc_Print:
+                break;
+            case MessageTypes.svc_Sounds:
+                break;
+            case MessageTypes.svc_SetView:
+                break;
             case MessageTypes.svc_ClearAllStringTables:
+                break;
+            case MessageTypes.svc_CmdKeyValues:
+                break;
+            case MessageTypes.svc_BSPDecal:
+                break;
+            case MessageTypes.svc_SplitScreen:
                 break;
             case MessageTypes.svc_PacketEntities:
                 ProcessPacketEntities(data);
                 break;
+            case MessageTypes.svc_Prefetch:
+                break;
+            case MessageTypes.svc_Menu:
+                break;
+            case MessageTypes.svc_GetCvarValue:
+                break;
+            case MessageTypes.svc_StopSound:
+                break;
+            case MessageTypes.svc_PeerList:
+                break;
+            case MessageTypes.svc_PacketReliable:
+                break;
             case MessageTypes.svc_HLTVStatus:
+                break;
+            case MessageTypes.svc_ServerSteamID:
+                break;
+            case MessageTypes.svc_FullFrameSplit:
+                break;
+            case MessageTypes.svc_RconServerDetails:
+                break;
+            case MessageTypes.svc_UserMessage:
+                break;
+            case MessageTypes.svc_Broadcast_Command:
+                break;
+            case MessageTypes.svc_HltvFixupOperatorStatus:
+                break;
+            case MessageTypes.svc_UserCmds:
                 break;
             case MessageTypes.UM_ParticleManager:
                 break;
@@ -338,7 +382,7 @@ public class MessageHandler
                     _context.EntityManager.DeleteEntity(entityIndex);
                 }
             }
-            
+
             if (updateType == PacketUpdateTypes.DeltaEnt)
             {
                 var entity = _context.EntityManager.UpdateAtIndex(entityIndex, ref eventData);
