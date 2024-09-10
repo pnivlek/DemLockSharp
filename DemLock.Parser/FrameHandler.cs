@@ -22,8 +22,8 @@ public class FrameHandler
 
     public void HandleFrame(DemoFrame frame)
     {
-        if(_context.Config.IgnoredFrames.Contains(frame.Command)) return;
-        
+        if (_context.Config.IgnoredFrames.Contains(frame.Command)) return;
+
         switch (frame.Command)
         {
             case DemoFrameCommand.DEM_Stop: return;
@@ -48,7 +48,7 @@ public class FrameHandler
         }
     }
 
-    
+
     /// <summary>
     /// Handle a Full packet frame being received, this could likely be merged with handle packet,
     /// but for clarity wanted to keep them explicit
@@ -83,7 +83,7 @@ public class FrameHandler
             _messageHandler.ProcessMessage(msgtype, msgData);
         }
     }
-    
+
     private void HandleFileHeader(DemoFrame frame)
     {
         var fileHeader = CDemoFileHeader.Parser.ParseFrom(frame.Data);
@@ -126,7 +126,7 @@ public class FrameHandler
         CDemoSendTables sendTable = CDemoSendTables.Parser.ParseFrom(frame.Data);
 
         BitBuffer bs = new BitBuffer(sendTable.Data.ToByteArray());
-        
+
         Span<byte> byteArr = new Span<byte>(new byte[bs.ReadVarUInt32()]);
         bs.ReadBytes(byteArr);
 

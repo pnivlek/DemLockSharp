@@ -8,8 +8,10 @@ namespace DemLock.Entities;
 /// </summary>
 public struct FieldPath : IReadOnlyList<int>
 {
-    public static readonly FieldPath Default = new() {-1};
-    
+    public static readonly FieldPath Default = new() { -1 };
+    private const ulong hashSeed = 3739894998211223;
+    private const int hashMultiple = 51414113;
+
     private int _path0;
     private int _path1;
     private int _path2;
@@ -66,7 +68,7 @@ public struct FieldPath : IReadOnlyList<int>
             if (index < 0 || index >= _size)
                 throw new ArgumentOutOfRangeException(nameof(index),
                     $"Cannot set item at index {index}, must be < {_size}");
-            
+
             switch (index)
             {
                 case 0: _path0 = value; break;
@@ -82,32 +84,36 @@ public struct FieldPath : IReadOnlyList<int>
     }
 
     public readonly int Count => _size;
-    
+
     public override string ToString() => _size == 0
         ? "(empty)"
         : "/" + string.Join('/', this);
 
-    public readonly IEnumerator<int> GetEnumerator() => new Enumerator(in this);
-    
-    IEnumerator IEnumerable.GetEnumerator() => new Enumerator(in this);
-    public ulong GetHash()  {
-        // Random prime number we will start from to attempt a even distribution
-        ulong hash = 3739894998211223;
-        hash ^= 51414113 * (ulong)(_path0 << 2);
-        hash ^= 51414113 * (ulong)(_path1 << 2);
-        hash ^= 51414113 * (ulong)(_path2 << 2);
-        hash ^= 51414113 * (ulong)(_path3 << 2);
-        hash ^= 51414113 * (ulong)(_path4 << 2);
-        hash ^= 51414113 * (ulong)(_path5 << 2);
-        hash ^= 51414113 * (ulong)(_path6 << 2);
-        hash ^= 51414113 * (ulong)_size;
+    public ulong GetHash()
+    {
+        // Adapted from the boost library for C++.
+        // https://stackoverflow.com/a/2595226
+        ulong hash = hashSeed;
+        hash ^= hashMultiple * (ulong)(_path0 << 2) + (hash << 6) + (hash >> 2);
+        hash ^= hashMultiple * (ulong)(_path1 << 2) + (hash << 6) + (hash >> 2);
+        hash ^= hashMultiple * (ulong)(_path2 << 2) + (hash << 6) + (hash >> 2);
+        hash ^= hashMultiple * (ulong)(_path3 << 2) + (hash << 6) + (hash >> 2);
+        hash ^= hashMultiple * (ulong)(_path4 << 2) + (hash << 6) + (hash >> 2);
+        hash ^= hashMultiple * (ulong)(_path5 << 2) + (hash << 6) + (hash >> 2);
+        hash ^= hashMultiple * (ulong)(_path6 << 2) + (hash << 6) + (hash >> 2);
+        hash ^= hashMultiple * (ulong)(_size << 2) + (hash << 6) + (hash >> 2);
         return hash;
     }
-    
-    public int GetHash(int classId)
+    public ulong GetHash(int classId)
     {
-        return (_path0, _path1, _path2, _path3, _path4, _path5, _path6, classId).GetHashCode();
+      ulong hash = this.GetHash();
+      hash ^= hashMultiple * (ulong)(classId << 2) + (hash << 6) + (hash >> 2);
+      return hash;
     }
+    
+    public readonly IEnumerator<int> GetEnumerator() => new Enumerator(in this);
+
+    IEnumerator IEnumerable.GetEnumerator() => new Enumerator(in this);
     public struct Enumerator : IEnumerator<int>
     {
         private readonly FieldPath _fieldPath;

@@ -22,15 +22,18 @@ public class EntityFieldData
     }
 }
 
-public class EntityMetaData
+public record EntityMetaData
 {
-    public string ClassName { get; set; }
-    public int ClassId { get; set; }
+    public required string ClassName { get; set; }
+    public required int ClassId { get; set; }
 }
 
 /// <summary>
 /// Manager for entities to consolidate all of the logic needed to instantiating, and updating
-/// the objects
+/// the objects. Entities are different types that appear inside of a frame - each representing
+/// the state of something in the world. For example, the CCitadelPlayerPawn entity contains details
+/// about each player. They are represented as lists of fields, all of which have a nested path
+/// (represented as a ReadOnlySpan) inside of a frame.
 /// </summary>
 public class EntityManager
 {
@@ -40,32 +43,54 @@ public class EntityManager
     /// The entities that are being tracked by the system, a simple array would probably work here,
     /// however I have opted for a dictionary, as this makes it easier to reason about, and deals with
     /// cases where there might end up being gaps, which again could be handled but this is easier
-    /// just to get things running
+    /// just to get things running.
+    ///
+    /// The second level of the key is the hash of the field paths.
     /// </summary>
     private Dictionary<int, Dictionary<ulong, EntityFieldData>> _entities;
 
+    /// <summary>
+    /// This variable stores entities that have been mapped to specific objects, usually because
+    /// they are notable and important in some way. A 
+    /// </summary>
+    private Dictionary<int, BaseEntity> _mappedEntities;
+
+    /// <summary>
+    /// The metadata around each entity index in the frame.
+    /// </summary>
     private Dictionary<int, EntityMetaData> _metaData;
-    private Dictionary<int, EntityDecoder> _deserializerMap;
+
+    /// <summary>
+    /// The map of entity indices to <see cref="EntityDecoder"/>.
+    /// </summary>
+    private Dictionary<int, EntityDecoder> _entityDecoders;
+
+    /// <summary>
+    /// This private member stores a cache of field decoders, ready for use with each entity found.
+    /// Therefore, we do not have to allocate a new decoder every time we come across every field,
+    /// and only have to when we come across a type that has not been seen before. The key is set 
+    /// to be a combination of the entity class id along with the field path, which determines 
+    /// where in the frame the field is.
+    /// </summary>
+    private Dictionary<ulong, FieldDecoder> _fieldDecoders;
 
     private Dictionary<ulong, string> _witness;
-    private Dictionary<int, FieldDecoder> _fieldDecoders;
-    private Dictionary<int, BaseEntity> _mappedEntities;
 
     public EntityManager(DemoParserContext context)
     {
-        _witness = new();
-        _mappedEntities = new();
         _context = context;
-        _metaData = new();
-        _fieldDecoders = new Dictionary<int, FieldDecoder>();
-        _deserializerMap = new Dictionary<int, EntityDecoder>();
         _entities = new();
+        _mappedEntities = new();
+        _metaData = new();
+        _entityDecoders = new Dictionary<int, EntityDecoder>();
+        _fieldDecoders = new();
+        _witness = new();
     }
 
     public void AddNewEntity(int index, DClass serverClass, uint serial)
     {
         var entity = _context.GetSerializerByClassName(serverClass.ClassName)?.Instantiate(serial);
-        _deserializerMap[index] = entity;
+        _entityDecoders[index] = entity;
         _entities[index] = new Dictionary<ulong, EntityFieldData>();
         if (serverClass.ClassName == "CCitadelPlayerPawn")
         {
@@ -74,14 +99,15 @@ public class EntityManager
 
         _metaData[index] = new EntityMetaData()
         {
-            ClassName = serverClass.ClassName
+            ClassName = serverClass.ClassName,
+            ClassId = serverClass.ClassId,
         };
     }
 
     public void DeleteEntity(int index)
     {
         _entities[index] = null!;
-        _deserializerMap[index] = null!;
+        _entityDecoders[index] = null!;
         _metaData[index] = null!;
         _mappedEntities[index] = null!;
     }
@@ -131,9 +157,17 @@ public class EntityManager
 
             var pathSpan = fieldPath.AsSpan();
 
-            var deserializer = _deserializerMap[index];
-            FieldDecoder decoder = deserializer.GetFieldDecoder(pathSpan);
-            var value = decoder.ReadValue(ref entityData);
+            var entityDecoder = _entityDecoders[index];
+            FieldDecoder fieldDecoder;
+            if (_fieldDecoders.TryGetValue(fieldHash, out fieldDecoder))
+            {
+            }
+            else
+            {
+                _fieldDecoders[fieldHash] = entityDecoder.GetFieldDecoder(pathSpan);
+                fieldDecoder = _fieldDecoders[fieldHash];
+            }
+            var value = fieldDecoder.ReadValue(ref entityData);
             targetEntity?.UpdateProperty(pathSpan, value);
 
 
@@ -146,15 +180,13 @@ public class EntityManager
                 if (_entities[index].TryGetValue(hash, out fieldData))
                 {
                     if (string.IsNullOrEmpty(fieldData.FieldName))
-                        deserializer.ReadFieldName(pathSpan, ref fieldName);
+                        entityDecoder.ReadFieldName(pathSpan, ref fieldName);
                     fieldData.FieldValue = value;
                 }
                 else
                 {
-                    deserializer.ReadFieldName(pathSpan, ref fieldName);
+                    entityDecoder.ReadFieldName(pathSpan, ref fieldName);
                 }
-
-                Console.WriteLine($"\t[{string.Join(",", pathSpan.ToArray())}] ({decoder}){fieldName}::{value}");
             }
         }
 
